@@ -1,20 +1,19 @@
+import heapq
+from collections import defaultdict
+
 from easysnmp import Session
 import os
-from netaddr import IPAddress
-import sys
-
 import graphviz
-# Create an SNMP session to be used for all our requests
-IPs = set()
 
+# Create an SNMP session to be used for all our requests
+IPs = set()  # interfaces
 routersInfo = dict()
 routersIfs = dict()
 routersExtIps = dict()
-graph = dict() # for dijsktra
 
 
 def recursiveSearch(sessionIp):
-    print(sessionIp)
+    print(sessionIp)  # show what router is getting asked for info
     extIPs = set()
     session = Session(hostname=sessionIp, community='rocom', version=2)
     description = session.walk('ifEntry')
@@ -23,14 +22,13 @@ def recursiveSearch(sessionIp):
         "snmptable -c rocom -v 2c " + sessionIp + " ipCidrRouteTable | awk  '{if(NR>3)print $1" "$2" "$4" "$6}' > "
                                                   "routeTable.log")
     f = open("routeTable.log", "r")
-    routersInfo[name] = f.read()
+    routersInfo[name] = f.read()  # routing info for every router
     f.close()
-           
-    
+
     IPs.add(sessionIp)
 
-    routerIfs=list()
-    routerPairExtIps=list()
+    routerIfs = list()
+    routerPairExtIps = list()
 
     for entry in description:
         intExtIps = list()
@@ -39,7 +37,7 @@ def recursiveSearch(sessionIp):
 
             index = entry.oid_index
             mac = entry.value
-            if session.get('ifAdminStatus.' + index).value == '1':  # discards down
+            if session.get('ifAdminStatus.' + index).value == '1':
                 # print(session.get('ifDescr.'+index).value)
                 allAddrs = session.walk('ipNetToPhysicalPhysAddress.' + index)
                 intIp = ""
@@ -56,12 +54,12 @@ def recursiveSearch(sessionIp):
                         routerIfs.append((ip, netmask.value, speed.value))
                         intIp = ip
                         IPs.add(ip)
-                    else: 
+                    else:
                         intExtIps.append(ip)
                         print("Connected to: " + ip)
                         extIPs.add(ip)
-                        
-                routerPairExtIps.append((intIp,intExtIps))
+
+                routerPairExtIps.append((intIp, intExtIps))
                 print()
 
     routersIfs[name] = routerIfs
@@ -72,25 +70,74 @@ def recursiveSearch(sessionIp):
 
 
 """ Method used to calculate the shortest path for every IP pair """
-def dijkstra(graph, source):
-    print(graph)
-    distances = {ip: sys.maxsize for ip in graph}
-    # keys = ip's, values = weight's, items = pairs of those
+
+
+def dijkstra(network):
+    # ara mateix funciona per cada router. HA de funcionar per cada IP de una interficie.
+    # la idea es utilitzar el diccionari
+    all_ips = set()
+    router_if = defaultdict(list)
+    for node1, node2 in network:
+        router1ips = getIps(node1, routersIfs)
+        router2ips = getIps(node2, routersIfs)
+        all_ips.update(router1ips)
+        all_ips.update(router2ips)
+        for ip1 in router1ips:
+            for ip2 in router2ips:
+                router_if[ip1].append(ip2)
+                router_if[ip2].append(ip1)
+    shortest_paths = {}
+    for source in all_ips:
+        print("[D]Assigning values for shortest paths")
+        shortest_paths[source] = {}
+        visited = set()
+        distances = {ip: float('inf') for ip in all_ips}
+        distances[source] = 0
+        heap = [(0, source)]
+        while heap:
+            current_dist, current_ip = heapq.heappop(heap)
+
+            if current_ip in visited:
+                continue
+            visited.add(current_ip)
+
+            for neighbor_ip in router_if[current_ip]:
+                distance = current_dist+1
+                if distance<distances[neighbor_ip]:
+                    distances[neighbor_ip] = distance
+                    heapq.heappush(heap, (distance, neighbor_ip))
+                    shortest_paths[source][neighbor_ip] = current_ip
+    print("[D]shortest_paths contains: ")
+    print(shortest_paths)
+    return shortest_paths
+    """
+    distances = {node: float('inf') for node in graph}
     distances[source] = 0
-    visited = set()
 
-    while len(visited) < len(graph):
-        current_node = min((ip for ip in graph if ip not in visited), key=distances.get)
-        visited.add(current_node)
+    routes = {node: [] for node in graph}
+    queue = [(0, source, [])]
+    while queue:
+        dist, node, route = heapq.heappop(queue)
+        if dist > distances[node]:
+            continue
+        for neighbor in graph[node]:
+            new_dist = dist + graph[node][neighbor]
+            if new_dist < distances[neighbor]:
+                distances[neighbor] = new_dist
+                new_route = route + [neighbor]
+                routes[neighbor] = new_route
+                heapq.heappush(queue, (new_dist, neighbor, new_route))
 
-        for neighbor, weight in graph[current_node].items():
-            if distances[current_node] + weight < distances[neighbor]:
-                distances[neighbor] = distances[current_node] + weight
-                print(f"UPDATED DISTANCE!!!!!!! ({distances[neighbor]})")
-
-    return distances
+    return distances, routes
+    """
 
 
+def getIps(router, allrouters):
+    ips = [pair[0] for pair in allrouters[router]]
+    return ips
+
+
+shortest_paths = {}
 if __name__ == "__main__":
     IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
     recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
@@ -115,27 +162,38 @@ if __name__ == "__main__":
     for edge in filtered_edges:
         net.edge(*edge)
     net.render('net.gv', view=True)
-    print("====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    for routerIp in IPs:
-        graph[IPAddress(routerIp)] = {IPAddress(ip): 1 for ip in IPs if ip != routerIp}
+    print(
+        "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    shortest_paths = dijkstra(filtered_edges)
+    print("--------SHORTEST PATHS---------")
+    print(shortest_paths)
 
-    distances = dijkstra(graph, "5.0.3.1")
-    #print(distances)
+    for ip in shortest_paths:
+        print(f"Shortests paths from {ip}: ")
+        for target, intermediate in shortest_paths[ip].items():
+            path = [target]
+            while intermediate != ip:
+                path.append(intermediate)
+                intermediate = shortest_paths[ip][intermediate]
+            path.append(ip)
+            path.reverse()
 
-    for destination, distance in distances.items():
-        path = [destination]
-        current = destination
-        while current != "5.0.3.1":
-            for neighbor, weight in graph[current].items():
-                if distances[current]-weight == distances[neighbor]:
-                    path.append(neighbor)
-                    current = neighbor
-                    # break
-        path.reverse()
-        print(f"Shortest path from 5.0.3.1 to {destination}: {path}")
-
-
-    # print(distances)
+                # route = routes[target]
+                # route_str = ' -> '.join(route[:-1])
+                # if distance > 1:
+                #    withFirstIp = f"IPorig:{router} -> " + route_str
+                #    parsedRoute = withFirstIp + " -> IPdest:" + route[-1]
+                #    print(f"To {target}: {distance} ({parsedRoute})")
+                # elif distance == 1:
+            print(f"To {target}: {' -> '.join(path)}")
+        print()
+                # distance = 0 means same router
+    print(
+        "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     print(routersInfo)
+    print(
+        "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     print(routersIfs)
+    print(
+        "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     print(routersExtIps)
