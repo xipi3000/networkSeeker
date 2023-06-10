@@ -3,41 +3,44 @@ from collections import defaultdict
 
 from easysnmp import Session
 import os
-import graphviz  
+import graphviz
+
 # Create an SNMP session to be used for all our requests
-IPs=set()
-routersInfo=dict()
-routersIfs=dict()
-routersExtIps=dict()
+IPs = set()
+routersInfo = dict()
+routersIfs = dict()
+routersExtIps = dict()
+
+
 def recursiveSearch(sessionIp):
     print(sessionIp)
-    extIPs=set()
-    session = Session(hostname=sessionIp, community='public', version=2)
+    extIPs = set()
+    session = Session(hostname=sessionIp, community='rocom', version=2)
     description = session.walk('ifEntry')
-    name=session.get('enterprises.9.2.1.3.0').value
-    os.system("snmptable -c public -v 2c "+sessionIp+" ipCidrRouteTable | awk  '{if(NR>3)print $1" "$2" "$4" "$6}' > routeTable.log" )
-    f = open("routeTable.log","r")
-    routersInfo[name]=f.read()
+    name = session.get('enterprises.9.2.1.3.0').value
+    os.system(
+        "snmptable -c rocom -v 2c " + sessionIp + " ipCidrRouteTable | awk  '{if(NR>3)print $1" "$2" "$4" "$6}' > routeTable.log")
+    f = open("routeTable.log", "r")
+    routersInfo[name] = f.read()
     f.close()
-           
-    
+
     IPs.add(sessionIp)
 
-    routerIfs=list()
-    routerPairExtIps=list()
+    routerIfs = list()
+    routerPairExtIps = list()
 
     for entry in description:
-        intExtIps=list()
-        
-        if(entry.oid=='ifPhysAddress'  and entry.value !=''  ):
-            
+        intExtIps = list()
+
+        if (entry.oid == 'ifPhysAddress' and entry.value != ''):
+
             index = entry.oid_index
-            mac= entry.value
-            if(session.get('ifAdminStatus.'+index).value=='1'):
-                    #print(session.get('ifDescr.'+index).value)
-                allAddrs=session.walk('ipNetToPhysicalPhysAddress.'+index)
-                intIp=""
-                
+            mac = entry.value
+            if (session.get('ifAdminStatus.' + index).value == '1'):
+                # print(session.get('ifDescr.'+index).value)
+                allAddrs = session.walk('ipNetToPhysicalPhysAddress.' + index)
+                intIp = ""
+
                 for add in allAddrs:
                     addMac = add.value.encode('latin-1')
                     ip = add.oid_index[6:]
@@ -98,8 +101,8 @@ def dijkstra(network):
             visited.add(current_ip)
 
             for neighbor_ip in router_if[current_ip]:
-                distance = current_dist+1
-                if distance<distances[neighbor_ip]:
+                distance = current_dist + 1
+                if distance < distances[neighbor_ip]:
                     distances[neighbor_ip] = distance
                     heapq.heappush(heap, (distance, neighbor_ip))
                     shortest_paths[source][neighbor_ip] = current_ip
@@ -149,23 +152,23 @@ if __name__ == "__main__":
             for v in routersIfs.items():
                 for item in v[1]:
                     if item[0] == intf[1][0]:
-
-                        edges.append(((routerId,v[0]),intf[1][0], intf[0]))
-                        print(routerId+"->"+v[0])
-    filtered_edges=[]
+                        edges.append(((routerId, v[0]), intf[1][0], intf[0]))
+                        print(routerId + "->" + v[0])
+    filtered_edges = []
     for edge in edges:
-        label=edge[1]
-        xlabel=edge[2]
-        edge=edge[0]
-        if((edge[1],edge[0]) not in filtered_edges):
-            filtered_edges.append((edge,label,xlabel))
+        label = edge[1]
+        xlabel = edge[2]
+        edge = edge[0]
+        if (edge[1], edge[0]) not in filtered_edges:
+            filtered_edges.append((edge, label, xlabel))
     for edge in filtered_edges:
         print(edge[1])
-        net.edge(*edge[0],headlabel=edge[1],taillabel=edge[2],xlabel="",label="             ",arrowhead="none")
+        net.edge(*edge[0], headlabel=edge[1], taillabel=edge[2], xlabel="", label="             ", arrowhead="none")
     net.render('net.gv', view=True)
     print(
         "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    shortest_paths = dijkstra(filtered_edges)
+    routers = [pair[0] for pair in filtered_edges]
+    shortest_paths = dijkstra(routers)
     print("--------SHORTEST PATHS---------")
     print(shortest_paths)
 
@@ -179,16 +182,16 @@ if __name__ == "__main__":
             path.append(ip)
             path.reverse()
 
-                # route = routes[target]
-                # route_str = ' -> '.join(route[:-1])
-                # if distance > 1:
-                #    withFirstIp = f"IPorig:{router} -> " + route_str
-                #    parsedRoute = withFirstIp + " -> IPdest:" + route[-1]
-                #    print(f"To {target}: {distance} ({parsedRoute})")
-                # elif distance == 1:
+            # route = routes[target]
+            # route_str = ' -> '.join(route[:-1])
+            # if distance > 1:
+            #    withFirstIp = f"IPorig:{router} -> " + route_str
+            #    parsedRoute = withFirstIp + " -> IPdest:" + route[-1]
+            #    print(f"To {target}: {distance} ({parsedRoute})")
+            # elif distance == 1:
             print(f"To {target}: {' -> '.join(path)}")
         print()
-                # distance = 0 means same router
+        # distance = 0 means same router
     print(
         "====================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     print(routersInfo)
