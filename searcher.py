@@ -203,6 +203,7 @@ if __name__ == "__main__":
             # elif distance == 1:
             print(f"To {target}: {' -> '.join(path)}")
         print()
+
         # distance = 0 means same router
     print("\n 4 - PLOTTING THE NETWORK (pop-up window) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     net.render('net.gv', view=True)
