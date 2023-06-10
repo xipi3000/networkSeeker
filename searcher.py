@@ -80,13 +80,17 @@ if __name__ == "__main__":
             for v in routersIfs.items():
                 for item in v[1]:
                     if item[0] == intf[1][0]:
-
-                        edges.append((routerId,v[0]))
+                     
+                        edges.append(((routerId,v[0]),intf[1][0], intf[0]))
                         print(routerId+"->"+v[0])
     filtered_edges=[]
     for edge in edges:
+        label=edge[1]
+        xlabel=edge[2]
+        edge=edge[0]
         if((edge[1],edge[0]) not in filtered_edges):
-            filtered_edges.append(edge)
+            filtered_edges.append((edge,label,xlabel))
     for edge in filtered_edges:
-        net.edge(*edge)
+        print(edge[1])
+        net.edge(*edge[0],headlabel=edge[1],taillabel=edge[2],xlabel="",label="             ",arrowhead="none")
     net.render('net.gv', view=True)
