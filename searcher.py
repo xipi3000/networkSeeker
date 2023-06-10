@@ -1,5 +1,6 @@
 from easysnmp import Session
 import os
+import graphviz  
 # Create an SNMP session to be used for all our requests
 IPs=set()
 routersInfo=dict()
@@ -37,6 +38,7 @@ def recursiveSearch(sessionIp):
                 for add in allAddrs:
                     addMac = add.value.encode('latin-1')
                     ip = add.oid_index[6:]
+                     
                     if(mac.encode('latin-1')==addMac):
                         
                         print("Internal: "+ip)
@@ -68,4 +70,23 @@ if __name__ == "__main__":
     print(routersInfo)
     print(routersIfs)
     print(routersExtIps)
-    
+    edges=[]
+    net = graphviz.Digraph(filename = "net.gv", comment='Network layout')
+    for router in routersExtIps:
+        net.node(router,router)
+    for routerId in routersExtIps.keys():
+        intfs = routersExtIps[routerId]
+        for intf in intfs:
+            for v in routersIfs.items():
+                for item in v[1]:
+                    if item[0] == intf[1][0]:
+
+                        edges.append((routerId,v[0]))
+                        print(routerId+"->"+v[0])
+    filtered_edges=[]
+    for edge in edges:
+        if((edge[1],edge[0]) not in filtered_edges):
+            filtered_edges.append(edge)
+    for edge in filtered_edges:
+        net.edge(*edge)
+    net.render('net.gv', view=True)
