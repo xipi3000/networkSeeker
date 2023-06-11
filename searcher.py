@@ -147,8 +147,8 @@ def getIps(router, allrouters):
 
 
 if __name__ == "__main__":
-    IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
-    recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
+    IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
+    recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     print(routersIfs)
@@ -159,23 +159,36 @@ if __name__ == "__main__":
     # Apartat 4 - Graph related code
     edges = []
     net = graphviz.Digraph(filename="net.gv", comment='Network layout')
+
+    switches=dict()
+    switchId=0
     for router in routersExtIps:
         net.node(router, router)
     for routerId in routersExtIps.keys():
         intfs = routersExtIps[routerId]
         for intf in intfs:
-            for v in routersIfs.items():
-                for item in v[1]:
-                    if item[0] == intf[1][0]:
-                        edges.append(((routerId, v[0]), intf[1][0], intf[0]))
-                        # print(routerId + "->" + v[0])
+            if(len(intf[1])>1):
+                foundIp= False
+                for switch, ips in switches.items():
+                    if intf[0] in ips:
+                        foundIp = True
+                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0], xlabel="", label="             ", arrowhead="none")
+                if(not foundIp):
+                        switches[switchId]=intf[1]
+                        switchId+=1
+                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0],  xlabel="", label="             ", arrowhead="none")
+            else:
+                for extRouter in routersIfs.items():
+                    for item in extRouter[1]:
+                        if item[0] == intf[1][0]:
+                            edges.append(((routerId, extRouter[0]), intf[1][0], intf[0]))
+                            
+
+
     filtered_edges = []
     for edge in edges:
-        label = edge[1]
-        xlabel = edge[2]
-        edge = edge[0]
-        if (edge[1], edge[0]) not in filtered_edges:
-            filtered_edges.append((edge, label, xlabel))
+        if ((edge[0][1],edge[0][0]),edge[2], edge[1]) not in filtered_edges:
+            filtered_edges.append((edge))
     for edge in filtered_edges:
         net.edge(*edge[0], headlabel=edge[1], taillabel=edge[2], xlabel="", label="             ", arrowhead="none")
     # T'he tret el render d'aqui per fer els prints d'apartats gucci, simplement està més abaix
