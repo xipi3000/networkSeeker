@@ -1,9 +1,11 @@
+import inotify.adapters
+import threading
+import time
 from collections import defaultdict
 from easysnmp import Session
 import heapq
 import os
 import graphviz
-
 
 # Global vars needed after
 IPs = set()
@@ -11,8 +13,6 @@ routersInfo = dict()
 routersIfs = dict()
 routersExtIps = dict()
 shortest_paths = dict()
-
-
 """ Method used to retrieve all necessary info from the routers """
 
 
@@ -43,6 +43,7 @@ def recursiveSearch(sessionIp):
             index = entry.oid_index
             mac = entry.value
             if session.get('ifAdminStatus.' + index).value == '1':  # Since value==1 -> no down interfaces
+                # Amb això descartem downs del propi router, no del que està connectat
                 # Get who we're connected to
                 allAddrs = session.walk('ipNetToPhysicalPhysAddress.' + index)
                 intIp = ""
@@ -146,9 +147,30 @@ def getIps(router, allrouters):
     return ips
 
 
+def printTrap():
+    with open("/etc/snmp/script/logs.txt", 'r') as f:
+        for line in f:
+            if line.startswith("trap information: "):
+                print("Recieved trap:")
+                print(line)
+
+
+def waitForTrap(notifier):
+    for event in notifier.event_gen(yield_nones=False):
+        (_, type_names, path, filename) = event
+        if "IN_MODIFY" in type_names and path == "/etc/snmp/script/logs.txt":
+            printTrap()
+
+
 if __name__ == "__main__":
-    IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
-    recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
+    notifier = inotify.adapters.Inotify()
+    notifier.add_watch("/etc/snmp/script/logs.txt")
+    waitForTrap(notifier)
+    thread = threading.Thread(target=printTrap)
+    thread.start()
+    """
+    IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
+    recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     print(routersIfs)
@@ -160,40 +182,39 @@ if __name__ == "__main__":
     edges = []
     net = graphviz.Digraph(filename="net.gv", comment='Network layout')
 
-    switches=dict()
-    switchId=0
+    switches = dict()
+    switchId = 0
     for router in routersExtIps:
         net.node(router, router)
     for routerId in routersExtIps.keys():
         intfs = routersExtIps[routerId]
         for intf in intfs:
-            if(len(intf[1])>1):
-                foundIp= False
+            if len(intf[1]) > 1:
+                foundIp = False
                 for switch, ips in switches.items():
                     if intf[0] in ips:
                         foundIp = True
-                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0], xlabel="", label="             ", arrowhead="none")
-                if(not foundIp):
-                        switches[switchId]=intf[1]
-                        switchId+=1
-                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0],  xlabel="", label="             ", arrowhead="none")
+                        net.edge(routerId, "S" + str(switchId), taillabel=intf[0], xlabel="", label="             ",
+                                 arrowhead="none")
+                if not foundIp:
+                    switches[switchId] = intf[1]
+                    switchId += 1
+                    net.edge(routerId, "S" + str(switchId), taillabel=intf[0], xlabel="", label="             ",
+                             arrowhead="none")
             else:
                 for extRouter in routersIfs.items():
                     for item in extRouter[1]:
                         if item[0] == intf[1][0]:
                             edges.append(((routerId, extRouter[0]), intf[1][0], intf[0]))
-                            
-
 
     filtered_edges = []
     for edge in edges:
-        if ((edge[0][1],edge[0][0]),edge[2], edge[1]) not in filtered_edges:
-            filtered_edges.append((edge))
+        if ((edge[0][1], edge[0][0]), edge[2], edge[1]) not in filtered_edges:
+            filtered_edges.append(edge)
     for edge in filtered_edges:
         net.edge(*edge[0], headlabel=edge[1], taillabel=edge[2], xlabel="", label="             ", arrowhead="none")
-    # T'he tret el render d'aqui per fer els prints d'apartats gucci, simplement està més abaix
     print("\n 3 - CREATING ROUTE SUMMARIES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    # Apartat 3 - Shortest paths related code (4 abans perque fem el filtered_edges)
+    # Apartat 3 - Shortest paths related code (4 abans perque necessitem el filtered_edges)
     routers = [pair[0] for pair in filtered_edges]
     shortest_paths = dijkstra(routers)
 
@@ -221,9 +242,5 @@ if __name__ == "__main__":
     print("\n 4 - PLOTTING THE NETWORK (pop-up window) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     net.render('net.gv', view=True)
     print("\n 5 - MONITOR THE NETWORK >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    # Send snmp traps from routers using Cisco traps (ospf state-change neighbor-state-change)
-    # When recievd, process, decode and print all trap info
-        # No se si ens caldrà un bucle per esperar-se sempre a veure si rep o algo
-    """ Això també estava al main original pero no se si ens cal 
-    # Connexions between routers (by IP)
-    print(routersExtIps)"""
+    # Handled by the thread
+    """
