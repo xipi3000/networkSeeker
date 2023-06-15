@@ -1,0 +1,18 @@
+// Network layout
+digraph {
+	Nogg [label=Nogg]
+	R7 [label=R7]
+	C3 [label=C3]
+	R1 [label=R1]
+	R2 [label=R2]
+	C2 [label=C2]
+	Nogg -> S1 [label="10000000bps" arrowhead=none taillabel="11.0.10.1" xlabel=""]
+	R1 -> S1 [label="10000000bps" arrowhead=none taillabel="11.0.10.2" xlabel=""]
+	R2 -> S1 [label="10000000bps" arrowhead=none taillabel="11.0.10.3" xlabel=""]
+	Nogg -> R7 [label="10000000bps" arrowhead=none headlabel="11.0.4.1" taillabel="11.0.4.2" xlabel=""]
+	Nogg -> R1 [label="10000000bps" arrowhead=none headlabel="11.0.3.1" taillabel="11.0.3.2" xlabel=""]
+	R7 -> C3 [label="100000000bps" arrowhead=none headlabel="11.0.6.2" taillabel="11.0.6.1" xlabel=""]
+	R7 -> R1 [label="10000000bps" arrowhead=none headlabel="11.0.1.1" taillabel="11.0.1.2" xlabel=""]
+	R1 -> R2 [label="10000000bps" arrowhead=none headlabel="12.1.0.2" taillabel="12.1.0.1" xlabel=""]
+	R2 -> C2 [label="100000000bps" arrowhead=none headlabel="11.0.2.2" taillabel="11.0.2.1" xlabel=""]
+}
