@@ -168,29 +168,35 @@ if __name__ == "__main__":
         intfs = routersExtIps[routerId]
         for intf in intfs:
             if(len(intf[1])>1):
+                speed=0
+                for extRouter in routersIfs.items():
+                    for item in extRouter[1]:
+                        if item[0] == intf[0]:
+                            speed=item[2]
                 foundIp= False
                 for switch, ips in switches.items():
                     if intf[0] in ips:
                         foundIp = True
-                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0], xlabel="", label="             ", arrowhead="none")
+                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0], xlabel="", label=speed+" bps", arrowhead="none")
                 if(not foundIp):
                         switches[switchId]=intf[1]
                         switchId+=1
-                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0],  xlabel="", label="             ", arrowhead="none")
+                        net.edge(routerId,"S"+str(switchId), taillabel=intf[0],  xlabel="", label=speed+" bps", arrowhead="none")
             else:
                 for extRouter in routersIfs.items():
                     for item in extRouter[1]:
                         if item[0] == intf[1][0]:
-                            edges.append(((routerId, extRouter[0]), intf[1][0], intf[0]))
+                            print(item)
+                            edges.append(((routerId, extRouter[0]), intf[1][0], intf[0],item[2]))
                             
 
 
     filtered_edges = []
     for edge in edges:
-        if ((edge[0][1],edge[0][0]),edge[2], edge[1]) not in filtered_edges:
+        if ((edge[0][1],edge[0][0]),edge[2], edge[1],edge[3]) not in filtered_edges:
             filtered_edges.append((edge))
     for edge in filtered_edges:
-        net.edge(*edge[0], headlabel=edge[1], taillabel=edge[2], xlabel="", label="             ", arrowhead="none")
+        net.edge(*edge[0], headlabel=edge[1], taillabel=edge[2], xlabel="", label=edge[3]+" bps", arrowhead="none")
     # T'he tret el render d'aqui per fer els prints d'apartats gucci, simplement està més abaix
     print("\n 3 - CREATING ROUTE SUMMARIES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 3 - Shortest paths related code (4 abans perque fem el filtered_edges)
