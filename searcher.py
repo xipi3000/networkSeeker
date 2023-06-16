@@ -188,34 +188,40 @@ def createGraph():
     for routerId in routersExtIps.keys():
         intfs = routersExtIps[routerId]
         for intf in intfs:
-            if(len(intf[1])>1):
+            if(len(intf.pointingIps)>1):
                 speed=0
                 for extRouter in routersIfs.items():
                     for item in extRouter[1]:
-                        if item[0] == intf[0]:
-                            speed=item[2]
+                        if item.intfIp == intf.intfIp:
+                            speed=item.speed
                 foundIp= False
                 for switch, ips in switches.items():
-                    if intf[0] in ips:
+                    if intf.intfIp in ips:
                         foundIp = True
                         net.edge(routerId,"S"+str(switchId), taillabel=intf.intfIp, xlabel="", label=speed+" bps", arrowhead="none")
                 if(not foundIp):
-                        switches[switchId]=intf[1]
+                        switches[switchId]=intf.pointingIps
                         switchId+=1
                         net.edge(routerId,"S"+str(switchId), taillabel=intf.intfIp,  xlabel="", label=speed+" bps", arrowhead="none")
             else:
                 for extRouter in routersIfs.items():
                     for item in extRouter[1]:
-                        if item[0] == intf[1][0]:
+                        
+                        if item.intfIp == intf.pointingIps[0]:
                   
-                            edges.append((VectorInfo(routerId, extRouter[0]), intf[1][0], intf.intfIp,item.speed))
+                            edges.append((VectorInfo(routerId, extRouter[0], intf.intfIp, intf.pointingIps[0],item.speed)))
     filtered_edges = []
     for edge in edges:
-        if ((edge.extRouter,edge.inRouter),edge.extIp, edge.inIp,edge.speed) not in filtered_edges:
+        found=False
+        for filtered_edge in filtered_edges:
+            if (VectorInfo(edge.extRouter,edge.inRouter,edge.extIp, edge.inIp,edge.speed).equals(filtered_edge)):
+                found=True
+        if(not found):
             filtered_edges.append((edge))
     for edge in filtered_edges:
-        net.edge((edge.inRouter,edge.extRouter), headlabel=edge.inIp, taillabel=edge.extIp, xlabel="", label=edge.speed+" bps", arrowhead="none")
-    return net
+        print(edge.inRouter,edge.extRouter,edge.inIp,edge.speed)
+        net.edge(edge.inRouter,edge.extRouter, headlabel=str(edge.inIp), taillabel=str(edge.extIp), xlabel="", label=str(edge.speed)+" bps", arrowhead="none")
+    return net,filtered_edges
 
 class VectorInfo():
     def __init__(self,inRouter,extRouter,inIp,extIp,speed):
@@ -224,6 +230,14 @@ class VectorInfo():
         self.inIp=inIp
         self.extIp=extIp
         self.speed=speed
+    def equals(self,other):
+        if(self.inRouter==other.inRouter and
+        self.extRouter==other.extRouter and
+        self.inIp==other.inIp and
+        self.extIp==other.extIp and
+        self.speed==other.speed):
+            return True
+        return False
 
 
 if __name__ == "__main__":
@@ -233,8 +247,8 @@ if __name__ == "__main__":
     #thread = threading.Thread(target=printTrap)
     #thread.start()
   
-    IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
-    recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
+    IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
+    recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     print(routersIfs)
@@ -243,10 +257,11 @@ if __name__ == "__main__":
     print(routersInfo)
 
     # Apartat 4 - Graph related code
-    net=createGraph()
+    net,filtered_edges =createGraph()
     # T'he tret el render d'aqui per fer els prints d'apartats gucci, simplement està més abaix
     print("\n 3 - CREATING ROUTE SUMMARIES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 3 - Shortest paths related code (4 abans perque necessitem el filtered_edges)
+    """
     routers = [pair[0] for pair in filtered_edges]
     shortest_paths = dijkstra(routers)
 
@@ -269,7 +284,7 @@ if __name__ == "__main__":
             # elif distance == 1:
             print(f"To {target}: {' -> '.join(path)}")
         print()
-
+        """
         # distance = 0 means same router
     print("\n 4 - PLOTTING THE NETWORK (pop-up window) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     net.render('net.gv', view=True)
