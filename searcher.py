@@ -17,12 +17,12 @@ shortest_paths = dict()
 
 
 """ Method used to retrieve all necessary info from the routers """
-class intf_pointing_ips:
+class IntfPointingIps:
     def __init__(self, intfIP, pointingIps):
         self.intfIp = intfIP
         self.pointingIps = pointingIps
 
-class intf_properties:
+class IntfProperties:
     def __init__(self, intfIP, netmask,speed):
         self.intfIp = intfIP
         self.netmask = netmask
@@ -71,7 +71,7 @@ def recursiveSearch(sessionIp):
                         print("Inteface ip: " + ip)
                         netmask = session.get('ipAdEntNetMask.' + ip)
                         speed = session.get('1.3.6.1.2.1.2.2.1.5.' + index)
-                        routerIfs.append(intf_properties(ip, netmask.value, speed.value))
+                        routerIfs.append(IntfProperties(ip, netmask.value, speed.value))
                         intIp = ip
                         IPs.add(ip)
                     else:
@@ -80,7 +80,7 @@ def recursiveSearch(sessionIp):
                         extIPs.add(ip)
                 # Save connected IPs' pair
 
-                routerPairExtIps.append(intf_pointing_ips(intIp, intExtIps))
+                routerPairExtIps.append(IntfPointingIps(intIp, intExtIps))
                 print()
     # Save router's info in global vars
     routersIfs[name] = routerIfs
@@ -208,7 +208,7 @@ def createGraph():
                     for item in extRouter[1]:
                         if item[0] == intf[1][0]:
                   
-                            edges.append((vectorInfo(routerId, extRouter[0]), intf[1][0], intf.intfIp,item.speed))
+                            edges.append((VectorInfo(routerId, extRouter[0]), intf[1][0], intf.intfIp,item.speed))
     filtered_edges = []
     for edge in edges:
         if ((edge.extRouter,edge.inRouter),edge.extIp, edge.inIp,edge.speed) not in filtered_edges:
@@ -217,7 +217,7 @@ def createGraph():
         net.edge((edge.inRouter,edge.extRouter), headlabel=edge.inIp, taillabel=edge.extIp, xlabel="", label=edge.speed+" bps", arrowhead="none")
     return net
 
-class vectorInfo():
+class VectorInfo():
     def __init__(self,inRouter,extRouter,inIp,extIp,speed):
         self.inRouter=inRouter
         self.extRouter=extRouter
@@ -227,11 +227,11 @@ class vectorInfo():
 
 
 if __name__ == "__main__":
-    notifier = inotify.adapters.Inotify()
-    notifier.add_watch("/etc/snmp/script/logs.txt")
-    waitForTrap(notifier)
-    thread = threading.Thread(target=printTrap)
-    thread.start()
+    #notifier = inotify.adapters.Inotify()
+    #notifier.add_watch("/etc/snmp/script/logs.txt")
+    #waitForTrap(notifier)
+    #thread = threading.Thread(target=printTrap)
+    #thread.start()
   
     IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
     recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
