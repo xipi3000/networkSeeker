@@ -169,7 +169,9 @@ def createGraph():
     switches = dict()
     switchId = 0
     for router in routersExtIps:
-        net.node(router, router)
+        net.node(router, label="",xlabel=router ,fontcolor="#c92f00",fontsize="20",fontname="bold",image="./router.png",width="1.2", height="0.8", fixedsize="true")
+
+
     for routerId in routersExtIps.keys():
         intfs = routersExtIps[routerId]
         for intf in intfs:
@@ -188,6 +190,7 @@ def createGraph():
                 if (not foundIp):
                     switches[switchId] = intf.pointingIps
                     switchId += 1
+                    net.node( "S" + str(switchId),label="",xlabel="S" + str(switchId),fontcolor="#c92f00",fontsize="20",fontname="bold",image="./switch.png",width="1.2", height="0.8", fixedsize="true")
                     net.edge(routerId, "S" + str(switchId), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
                              arrowhead="none")
             else:
@@ -237,8 +240,8 @@ if __name__ == "__main__":
     # thread = threading.Thread(target=printTrap)
     # thread.start()
 
-    IPs.add("5.0.3.2")  # we add our tap ip address, so it doesn't get checked
-    recursiveSearch("5.0.3.1")  # ip our tap interface is connected to
+    IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
+    recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     print(routersIfs)
