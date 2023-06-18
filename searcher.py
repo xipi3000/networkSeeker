@@ -240,10 +240,10 @@ class VectorInfo():
 
 
 def searchConnectedIp(ip):
-    
+
     for k, v in routersExtIps.items():
         for intfs in v:
-            
+
             for extIp in intfs.pointingIps:
                 if(ip==extIp):
                     return intfs.intfIp
@@ -258,21 +258,19 @@ def getRouterFromIp(ip):
     for k, v in routersIfs.items():
         for intfs in v:
             if(ip==intfs.intfIp):
-                
+
                 return k
 
 if __name__ == "__main__":
-    #notifier = inotify.adapters.Inotify()
-    #notifier.add_watch("/etc/snmp/script/logs.txt")
-    #waitForTrap(notifier)
-    #thread = threading.Thread(target=printTrap)
-    #thread.start()
-
+    notifier = inotify.adapters.Inotify()
+    notifier.add_watch("/etc/snmp/script/logs.txt")
+    thread = threading.Thread(target=waitForTrap, args=(notifier,))
+    thread.start()
     #yourIp = input("Insert your device interface IP connected to the target network: ")
     #seekingIp = input("Insert the ip address you wanna search in the target network: ")
     debugging = isDebugging(input("Debug the network search? (y/n)"))
-    yourIp="11.0.5.2"
-    seekingIp="11.0.3.1"
+    yourIp="5.0.3.2"
+    seekingIp="5.0.3.1"
     IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
     print("Searching...")
     recursiveSearch(seekingIp,debugging)  # ip our tap interface is connected to
@@ -306,7 +304,7 @@ if __name__ == "__main__":
             while intermediate != ip:
                 path.append(str(getRouterFromIp(intermediate)))
                 intermediate = shortest_paths[ip][intermediate]
-            
+
             path.append(ip +"("+str(getRouterFromIp(ip))+")")
 
             path.reverse()
