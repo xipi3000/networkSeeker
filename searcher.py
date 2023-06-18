@@ -210,7 +210,7 @@ def createGraph():
             filtered_edges.append((edge))
     for edge in filtered_edges:
         print(edge.inRouter, edge.extRouter, edge.inIp, edge.speed)
-        net.edge(edge.inRouter, edge.extRouter, headlabel=str(edge.inIp), taillabel=str(edge.extIp), xlabel="",
+        net.edge(edge.inRouter, edge.extRouter, headlabel=str(edge.extIp), taillabel=str(edge.inIp), xlabel="",
                  label=str(edge.speed) + " bps", arrowhead="none")
     return net, filtered_edges
 
@@ -232,19 +232,28 @@ class VectorInfo():
             return True
         return False
 
+def getRouterFromIp(ip):
+    for k, v in routersIfs.items():
+        for intfs in v:
+            if(str(ip)==str(intfs.intfIp)):
+               # print(ip)
+                #print(k+" "+intfs.intfIp+" "+intfs.netmask+" "+intfs.speed)
+                return k
 
 if __name__ == "__main__":
-    # notifier = inotify.adapters.Inotify()
-    # notifier.add_watch("/etc/snmp/script/logs.txt")
-    # waitForTrap(notifier)
-    # thread = threading.Thread(target=printTrap)
-    # thread.start()
+    #notifier = inotify.adapters.Inotify()
+    #notifier.add_watch("/etc/snmp/script/logs.txt")
+    #waitForTrap(notifier)
+    #thread = threading.Thread(target=printTrap)
+    #thread.start()
 
     IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
     recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
-    print(routersIfs)
+    for k, value in routersIfs.items():
+        for item in value:
+            print(k+" "+item.intfIp+" "+item.netmask+" "+item.speed)
     print("\n 2 - GETTING THE ROUTING TABLES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 2 - routing table (for every router)
     print(routersInfo)
@@ -254,26 +263,23 @@ if __name__ == "__main__":
     print("\n 3 - CREATING ROUTE SUMMARIES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 3 - Shortest paths related code
     routers = [(item.inIp, item.extIp) for item in filtered_edges]
+    print(routers)
     shortest_paths = dijkstra(routersExtIps)
-
+    print(shortest_paths)
     for ip in shortest_paths:
-        print(f"Shortests paths from {ip}: ")
+        print(f"Shortests paths from {ip}({str(getRouterFromIp(ip))}): ")
         for target, intermediate in shortest_paths[ip].items():
             path = [target]
             while intermediate != ip:
-                path.append(intermediate)
+                path.append(str(getRouterFromIp(intermediate)))
                 intermediate = shortest_paths[ip][intermediate]
-            path.append(ip)
+            
+            path.append(str(getRouterFromIp(ip)))
+
             path.reverse()
 
-            # route = routes[target]
-            # route_str = ' -> '.join(route[:-1])
-            # if distance > 1:
-            #    withFirstIp = f"IPorig:{router} -> " + route_str
-            #    parsedRoute = withFirstIp + " -> IPdest:" + route[-1]
-            #    print(f"To {target}: {distance} ({parsedRoute})")
-            # elif distance == 1:
-            print(f"To {target}: {' -> '.join(path)}")
+
+            print(f"To {target}({str(getRouterFromIp(target))}): {' -> '.join(path)}({str(getRouterFromIp(target))})")
         print()
 
         # distance = 0 means same router
