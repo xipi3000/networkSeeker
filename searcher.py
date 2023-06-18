@@ -14,7 +14,8 @@ routersIfs = dict()
 routersIps = dict()
 routersExtIps = dict()
 shortest_paths = dict()
-
+yourIp=""
+seekingIp=""
 """ Method used to retrieve all necessary info from the routers """
 
 
@@ -31,9 +32,10 @@ class IntfProperties:
         self.speed = speed
 
 
-def recursiveSearch(sessionIp):
+def recursiveSearch(sessionIp,debugging):
     # Show which ip we'll be working with this iteration
-    print(sessionIp)
+    if(debugging):
+        print(sessionIp)
     extIPs = set()
     # Create the session
     session = Session(hostname=sessionIp, community='rocom', version=2)
@@ -69,7 +71,7 @@ def recursiveSearch(sessionIp):
                     ip = add.oid_index[6:]
                     # Differentiate which ip we're working with
                     if mac.encode('latin-1') == addMac:
-                        print("Inteface ip: " + ip)
+                        if(debugging):print("Inteface ip: " + ip)
                         netmask = session.get('ipAdEntNetMask.' + ip)
                         speed = session.get('1.3.6.1.2.1.2.2.1.5.' + index)
                         routerIfs.append(IntfProperties(ip, netmask.value, speed.value))
@@ -78,11 +80,11 @@ def recursiveSearch(sessionIp):
                         IPs.add(ip)
                     else:
                         intExtIps.append(ip)
-                        print("Connected to: " + ip)
+                        if(debugging):print("Connected to: " + ip)
                         extIPs.add(ip)
                 # Save connected IPs' pair
                 routerPairExtIps.append(IntfPointingIps(intIp, intExtIps))
-                print()
+                if(debugging):print()
     # Save router's info in global vars
     routersIfs[name] = routerIfs
     routersExtIps[name] = routerPairExtIps
@@ -90,7 +92,7 @@ def recursiveSearch(sessionIp):
     # Next iteration (or end)
     for ip in extIPs:
         if ip not in IPs:
-            recursiveSearch(ip)
+            recursiveSearch(ip,debugging)
 
 
 """ Method used to calculate the shortest path for every IP pair """
@@ -209,9 +211,13 @@ def createGraph():
         if (not found):
             filtered_edges.append((edge))
     for edge in filtered_edges:
-        print(edge.inRouter, edge.extRouter, edge.inIp, edge.speed)
+        #print(edge.inRouter, edge.extRouter, edge.inIp, edge.speed)
         net.edge(edge.inRouter, edge.extRouter, headlabel=str(edge.extIp), taillabel=str(edge.inIp), xlabel="",
                  label=str(edge.speed) + " bps", arrowhead="none")
+    net.node("Your Device")
+    connIp=searchConnectedIp(yourIp)
+    net.edge("Your Device", getRouterFromIp(connIp), headlabel=str(connIp), taillabel=str(yourIp), xlabel="",
+                 label="", arrowhead="none")
     return net, filtered_edges
 
 
@@ -232,12 +238,27 @@ class VectorInfo():
             return True
         return False
 
+
+def searchConnectedIp(ip):
+    
+    for k, v in routersExtIps.items():
+        for intfs in v:
+            
+            for extIp in intfs.pointingIps:
+                if(ip==extIp):
+                    return intfs.intfIp
+def isDebugging(inputResult):
+    if(inputResult=="y"):
+        return True
+    return False
+
 def getRouterFromIp(ip):
+    if(ip==yourIp):
+        return "Your Device"
     for k, v in routersIfs.items():
         for intfs in v:
-            if(str(ip)==str(intfs.intfIp)):
-               # print(ip)
-                #print(k+" "+intfs.intfIp+" "+intfs.netmask+" "+intfs.speed)
+            if(ip==intfs.intfIp):
+                
                 return k
 
 if __name__ == "__main__":
@@ -247,39 +268,51 @@ if __name__ == "__main__":
     #thread = threading.Thread(target=printTrap)
     #thread.start()
 
-    IPs.add("11.0.5.2")  # we add our tap ip address, so it doesn't get checked
-    recursiveSearch("11.0.5.1")  # ip our tap interface is connected to
+    #yourIp = input("Insert your device interface IP connected to the target network: ")
+    #seekingIp = input("Insert the ip address you wanna search in the target network: ")
+    debugging = isDebugging(input("Debug the network search? (y/n)"))
+    yourIp="11.0.5.2"
+    seekingIp="11.0.3.1"
+    IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
+    print("Searching...")
+    recursiveSearch(seekingIp,debugging)  # ip our tap interface is connected to
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     for k, value in routersIfs.items():
+        print("Device: "+k)
         for item in value:
-            print(k+" "+item.intfIp+" "+item.netmask+" "+item.speed)
+            print("\tIp: "+item.intfIp+" Netmask: "+item.netmask+" Speed: "+item.speed+"bps")
+        print()
     print("\n 2 - GETTING THE ROUTING TABLES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 2 - routing table (for every router)
-    print(routersInfo)
+    for device, deviceIntfs in routersInfo.items():
+        print("Device:" + device)
+        for intf in deviceIntfs:
+            print("\t"+intf)
+        print()
 
     # Apartat 4 - Graph related code
     net, filtered_edges = createGraph()
     print("\n 3 - CREATING ROUTE SUMMARIES >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 3 - Shortest paths related code
     routers = [(item.inIp, item.extIp) for item in filtered_edges]
-    print(routers)
+    #print(routers)
     shortest_paths = dijkstra(routersExtIps)
-    print(shortest_paths)
+    #print(shortest_paths)
     for ip in shortest_paths:
         print(f"Shortests paths from {ip}({str(getRouterFromIp(ip))}): ")
         for target, intermediate in shortest_paths[ip].items():
-            path = [target]
+            path = [target +"("+str(getRouterFromIp(target))+")"]
             while intermediate != ip:
                 path.append(str(getRouterFromIp(intermediate)))
                 intermediate = shortest_paths[ip][intermediate]
             
-            path.append(str(getRouterFromIp(ip)))
+            path.append(ip +"("+str(getRouterFromIp(ip))+")")
 
             path.reverse()
 
 
-            print(f"To {target}({str(getRouterFromIp(target))}): {' -> '.join(path)}({str(getRouterFromIp(target))})")
+            print(f"To {target}({str(getRouterFromIp(target))}): {' -> '.join(path)} ")
         print()
 
         # distance = 0 means same router
