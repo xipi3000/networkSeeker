@@ -175,25 +175,29 @@ def waitForTrap(notifier):
 def createGraph():
     edges = []
     net = graphviz.Digraph(filename="net.gv", comment='Network layout')
-
     switches = dict()
     switchId = 0
     for router in routersExtIps:
         net.node(router, label="",xlabel=router ,fontcolor="#c92f00",fontsize="20",fontname="bold",image="./router.png",width="1.2", height="0.8", fixedsize="true")
-
 
     for routerId, intfs in routersExtIps.items():
         for intf in intfs:
             if (len(intf.pointingIps) > 1):
                 speed = fromRouterGetIntf(intf.intfIp,routerId).speed
                 foundIp = False
+                
                 for switch, ips in switches.items():
+                    print(switches[switch])
                     if intf.intfIp in ips:
+                        print(switch)
                         foundIp = True
-                        net.edge(routerId, "S" + str(switchId), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
+                        net.edge(routerId, "S" + str(switch+1), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
                                  arrowhead="none")
                 if (not foundIp):
+                    print(switches)
                     switches[switchId] = intf.pointingIps
+                    switches[switchId].append(intf.intfIp)
+                   
                     switchId += 1
                     net.node( "S" + str(switchId),label="",xlabel="S" + str(switchId),fontcolor="#c92f00",fontsize="20",fontname="bold",image="./switch.png",width="1.2", height="0.8", fixedsize="true")
                     net.edge(routerId, "S" + str(switchId), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
