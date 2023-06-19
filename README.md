@@ -39,8 +39,8 @@ sudo touch logs.txt
 
 Now you're free to start the services (and if you can't, try installing them first with sudo apt-get install)
 ```shell
-  sudo service snmpd start
-  sudo service snmptrapd start
+sudo service snmpd start
+sudo service snmptrapd start
 ```
 
 # Searcher.py usage:
