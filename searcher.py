@@ -16,10 +16,12 @@ routersExtIps = dict()
 shortest_paths = dict()
 yourIp=""
 seekingIp=""
+numProc=1
 """ Method used to retrieve all necessary info from the routers """
 
 
 class IntfPointingIps:
+
     def __init__(self, intfIP, pointingIps):
         self.intfIp = intfIP
         self.pointingIps = pointingIps
@@ -92,8 +94,12 @@ def recursiveSearch(sessionIp,debugging):
     # Next iteration (or end)
     for ip in extIPs:
         if ip not in IPs:
-            recursiveSearch(ip,debugging)
-
+            thread = threading.Thread(target=recursiveSearch, args=(ip,debugging))
+            thread.start()
+            global numProc
+            numProc+=1
+            #recursiveSearch(ip,debugging)
+    barrier.wait()
 
 """ Method used to calculate the shortest path for every IP pair """
 
@@ -174,15 +180,10 @@ def createGraph():
         net.node(router, label="",xlabel=router ,fontcolor="#c92f00",fontsize="20",fontname="bold",image="./router.png",width="1.2", height="0.8", fixedsize="true")
 
 
-    for routerId in routersExtIps.keys():
-        intfs = routersExtIps[routerId]
+    for routerId, intfs in routersExtIps.items():
         for intf in intfs:
             if (len(intf.pointingIps) > 1):
-                speed = 0
-                for extRouter in routersIfs.items():
-                    for item in extRouter[1]:
-                        if item.intfIp == intf.intfIp:
-                            speed = item.speed
+                speed = fromRouterGetIntf(intf.intfIp,routerId).speed
                 foundIp = False
                 for switch, ips in switches.items():
                     if intf.intfIp in ips:
@@ -196,12 +197,11 @@ def createGraph():
                     net.edge(routerId, "S" + str(switchId), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
                              arrowhead="none")
             else:
-                for extRouter in routersIfs.items():
-                    for item in extRouter[1]:
-
-                        if item.intfIp == intf.pointingIps[0]:
-                            edges.append(
-                                (VectorInfo(routerId, extRouter[0], intf.intfIp, intf.pointingIps[0], item.speed)))
+                routerInfo = fromRouterGetIntf(intf.intfIp,routerId)
+                extRouter = getRouterFromIp(intf.pointingIps[0])
+                edges.append(
+                    (VectorInfo(routerId, extRouter, intf.intfIp, intf.pointingIps[0], routerInfo.speed)))
+               
     filtered_edges = []
     for edge in edges:
         found = False
@@ -211,13 +211,8 @@ def createGraph():
         if (not found):
             filtered_edges.append((edge))
     for edge in filtered_edges:
-        #print(edge.inRouter, edge.extRouter, edge.inIp, edge.speed)
         net.edge(edge.inRouter, edge.extRouter, headlabel=str(edge.extIp), taillabel=str(edge.inIp), xlabel="",
                  label=str(edge.speed) + " bps", arrowhead="none")
-    net.node("Your Device")
-    connIp=searchConnectedIp(yourIp)
-    net.edge("Your Device", getRouterFromIp(connIp), headlabel=str(connIp), taillabel=str(yourIp), xlabel="",
-                 label="", arrowhead="none")
     return net, filtered_edges
 
 
@@ -238,15 +233,21 @@ class VectorInfo():
             return True
         return False
 
+def fromRouterGetIntf(ip,router):
+    for interface in routersIfs[router]:
+        if(interface.intfIp==ip):
+            return interface
+
+
 
 def searchConnectedIp(ip):
-
     for k, v in routersExtIps.items():
         for intfs in v:
-
             for extIp in intfs.pointingIps:
                 if(ip==extIp):
                     return intfs.intfIp
+                
+
 def isDebugging(inputResult):
     if(inputResult=="y"):
         return True
@@ -260,20 +261,25 @@ def getRouterFromIp(ip):
             if(ip==intfs.intfIp):
 
                 return k
+            
+
+barrier = threading.Barrier(numProc)
 
 if __name__ == "__main__":
-    notifier = inotify.adapters.Inotify()
-    notifier.add_watch("/etc/snmp/script/logs.txt")
-    thread = threading.Thread(target=waitForTrap, args=(notifier,))
-    thread.start()
-    #yourIp = input("Insert your device interface IP connected to the target network: ")
-    #seekingIp = input("Insert the ip address you wanna search in the target network: ")
-    debugging = isDebugging(input("Debug the network search? (y/n)"))
+    #notifier = inotify.adapters.Inotify()
+    #notifier.add_watch("/etc/snmp/script/logs.txt")
+    #thread = threading.Thread(target=waitForTrap, args=(notifier,))
+    #thread.start()
     yourIp="5.0.3.2"
     seekingIp="5.0.3.1"
+    yourIp = input("Insert your device interface IP connected to the target network: ")
+    seekingIp = input("Insert the ip address you wanna search in the target network: ")
+    debugging = isDebugging(input("Debug the network search? (y/n)"))
+    
     IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
     print("Searching...")
     recursiveSearch(seekingIp,debugging)  # ip our tap interface is connected to
+    barrier.wait()
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     for k, value in routersIfs.items():
