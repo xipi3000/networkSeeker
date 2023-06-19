@@ -39,7 +39,7 @@ class IntfProperties:
 def recursiveSearch(sessionIp,debugging):
     # Show which ip we'll be working with this iteration
     if(debugging):
-        print(sessionIp)
+        print("Searching on: "+sessionIp)
     extIPs = set()
     # Create the session
     session = Session(hostname=sessionIp, community='rocom', version=2)
@@ -47,6 +47,8 @@ def recursiveSearch(sessionIp,debugging):
         description = session.walk('ifEntry')  # Get all interfaces
     except:
         shutIps.add(sessionIp)
+        if(debugging):
+            print("No working networks here")
         exit(-1)
     name = session.get('enterprises.9.2.1.3.0').value
     # Getting the routing table info
@@ -214,15 +216,15 @@ def createGraph():
 
                 #If the switch node has been created already just connect the nodes.
                 for switch, ips in switches.items():
-                    print(switches[switch])
+             
                     if intf.intfIp in ips:
-                        print(switch)
+                
                         foundIp = True
                         net.edge(routerId, "S" + str(switch+1), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
                                  arrowhead="none")
                 #If the switch node hasn't been created yet it will create a new node, connect the edges and add to a dictionary the switchId with connected to it.
                 if (not foundIp):
-                    print(switches)
+           
                     switches[switchId] = intf.pointingIps
                     switches[switchId].append(intf.intfIp)
 
@@ -235,7 +237,7 @@ def createGraph():
             elif (len(intf.pointingIps)==1):
                 #Gets the interface information and the external ip connected to it.
                 interInfo = fromRouterGetIntf(intf.intfIp,routerId)
-                print(intf.intfIp)
+               
                 extRouter = getRouterFromIp(intf.pointingIps[0])
                 edges.append(
                     (VectorInfo(routerId, extRouter, intf.intfIp, intf.pointingIps[0], interInfo.speed)))
