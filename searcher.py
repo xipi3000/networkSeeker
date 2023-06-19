@@ -14,7 +14,6 @@ routingTables = dict()
 #For every router has the IntfProperties for each interface
 routersIfs = dict()
 
-routersIps = dict()
 #For every router has the IntfPointingIps for each interface
 routersExtIps = dict()
 shortest_paths = dict()
@@ -92,7 +91,7 @@ def recursiveSearch(sessionIp,debugging):
     # Save router's info in global vars
     routersIfs[name] = routerIfs
     routersExtIps[name] = routerPairExtIps
-    routersIps[name] = routerIps
+
     # Next iteration with a new thread for each (or end) 
     threads=[]
     for ip in extIPs:
