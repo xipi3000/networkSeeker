@@ -16,7 +16,6 @@ routersExtIps = dict()
 shortest_paths = dict()
 yourIp=""
 seekingIp=""
-numProc=1
 """ Method used to retrieve all necessary info from the routers """
 
 
@@ -92,14 +91,17 @@ def recursiveSearch(sessionIp,debugging):
     routersExtIps[name] = routerPairExtIps
     routersIps[name] = routerIps
     # Next iteration (or end)
+    threads=[]
     for ip in extIPs:
         if ip not in IPs:
             thread = threading.Thread(target=recursiveSearch, args=(ip,debugging))
             thread.start()
-            global numProc
-            numProc+=1
+            threads.append(thread)
+            
             #recursiveSearch(ip,debugging)
-    barrier.wait()
+    for thread in threads:
+        thread.join()
+
 
 """ Method used to calculate the shortest path for every IP pair """
 
@@ -261,25 +263,24 @@ def getRouterFromIp(ip):
             if(ip==intfs.intfIp):
 
                 return k
-            
-
-barrier = threading.Barrier(numProc)
+                
 
 if __name__ == "__main__":
     #notifier = inotify.adapters.Inotify()
     #notifier.add_watch("/etc/snmp/script/logs.txt")
     #thread = threading.Thread(target=waitForTrap, args=(notifier,))
     #thread.start()
-    yourIp="5.0.3.2"
-    seekingIp="5.0.3.1"
-    yourIp = input("Insert your device interface IP connected to the target network: ")
-    seekingIp = input("Insert the ip address you wanna search in the target network: ")
-    debugging = isDebugging(input("Debug the network search? (y/n)"))
+    yourIp="11.0.5.2"
+    seekingIp="11.0.5.1"
+    debugging=False
+    #yourIp = input("Insert your device interface IP connected to the target network: ")
+    #seekingIp = input("Insert the ip address you wanna search in the target network: ")
+    #debugging = isDebugging(input("Debug the network search? (y/n)"))
     
     IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
     print("Searching...")
     recursiveSearch(seekingIp,debugging)  # ip our tap interface is connected to
-    barrier.wait()
+    
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     for k, value in routersIfs.items():
