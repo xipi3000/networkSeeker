@@ -14,7 +14,7 @@ In order to set up the trap catcher, you'll have to follow these steps:
 First, go to /etc/snmp and create a new directory called "script":
 ```shell
 cd /etc/snmp
-mkdir script
+sudo mkdir script
 ```
 
 Then, go to the "extra_files" directory provided with the project and copy 
@@ -22,10 +22,10 @@ all .conf files to /etc/snmp, and the "trap_handler" file
 into the new script directory:
 ```shell
 cd /<path-to-project>/extra_files
-cp snmp.conf /etc/snmp
-cp snmpd.conf /etc/snmp
-cp snmptrapd.conf /etc/snmp
-cp trap_handler /etc/snmp/extra_files
+sudo cp snmp.conf /etc/snmp
+sudo cp snmpd.conf /etc/snmp
+sudo cp snmptrapd.conf /etc/snmp
+sudo cp trap_handler /etc/snmp/extra_files
 ```
   
 and don't forget to give execution privileges to the script! 
@@ -33,7 +33,7 @@ and don't forget to give execution privileges to the script!
 And while you're there, create an empty file called logs.txt
 ```shell
 cd /etc/snmp/script
-chmod +x trap_handler
+sudo chmod +x trap_handler
 sudo touch logs.txt
 ```
 
