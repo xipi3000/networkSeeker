@@ -14,16 +14,16 @@ routingTables = dict()
 #For every router has the IntfProperties for each interface
 routersIfs = dict()
 
-routersIps = dict()
 #For every router has the IntfPointingIps for each interface
 routersExtIps = dict()
 shortest_paths = dict()
-yourIp=""
-seekingIp=""
+yourIp = ""
+seekingIp = ""
 """ Method used to retrieve all necessary info from the routers """
 
 #It encapsulates the interface ip and its ip pair or multiple ips if connected with a switch
 class IntfPointingIps:
+
     def __init__(self, intfIP, pointingIps):
         self.intfIp = intfIP
         self.pointingIps = pointingIps
@@ -43,7 +43,11 @@ def recursiveSearch(sessionIp,debugging):
     extIPs = set()
     # Create the session
     session = Session(hostname=sessionIp, community='rocom', version=2)
-    description = session.walk('ifEntry')  # Get all interfaces
+    try:
+        description = session.walk('ifEntry')  # Get all interfaces
+    except:
+        shutIps.add(sessionIp)
+        exit(-1)
     name = session.get('enterprises.9.2.1.3.0').value
     # Getting the routing table info
     os.system(
@@ -92,19 +96,32 @@ def recursiveSearch(sessionIp,debugging):
     # Save router's info in global vars
     routersIfs[name] = routerIfs
     routersExtIps[name] = routerPairExtIps
-    routersIps[name] = routerIps
+
     # Next iteration with a new thread for each (or end) 
     threads=[]
     for ip in extIPs:
         if ip not in IPs:
             thread = threading.Thread(target=recursiveSearch, args=(ip,debugging))
             thread.start()
-            threads.append(thread)
-    for thread in threads:
+            threads.append((thread,ip))
+    for thread,ip in threads:
         thread.join()
 
 
+shutIps=set()
+
+def removeShut():
+ 
+    for shutIp in shutIps:
+        for router, intfs in routersExtIps.items():
+            for intf in intfs:
+                if shutIp in intf.pointingIps:   
+                        intf.pointingIps.remove(shutIp)
+
+
 """ Method used to calculate the shortest path for every IP pair """
+
+
 def dijkstra(routers):
     # Instantiate vars
     all_ips = set()
@@ -149,6 +166,7 @@ def dijkstra(routers):
     return shortest_paths
 
 
+
 """ Method used to collect all ip's associated with a router """
 
 #Gets all the ips from a router
@@ -173,7 +191,8 @@ def waitForTrap(notifier):
         if "IN_MODIFY" in type_names and path == "/etc/snmp/script/logs.txt":
             printTrap()
 
-#This function creates all the nodes and connections visible in the gv
+
+# This function creates all the nodes and connections visible in the gv
 def createGraph():
     edges = []
     net = graphviz.Digraph(filename="net.gv", comment='Network layout')
@@ -188,10 +207,11 @@ def createGraph():
         for intf in intfs:
 
             #If there are more than one external ips means that a switch like device is being used so it creates a switch node
+
             if (len(intf.pointingIps) > 1):
                 speed = fromRouterGetIntf(intf.intfIp,routerId).speed
                 foundIp = False
-                
+
                 #If the switch node has been created already just connect the nodes.
                 for switch, ips in switches.items():
                     print(switches[switch])
@@ -205,21 +225,22 @@ def createGraph():
                     print(switches)
                     switches[switchId] = intf.pointingIps
                     switches[switchId].append(intf.intfIp)
-                   
+
                     switchId += 1
                     net.node( "S" + str(switchId),label="",xlabel="S" + str(switchId),fontcolor="#c92f00",fontsize="20",fontname="bold",image="./switch.png",width="1.2", height="0.8", fixedsize="true")
                     net.edge(routerId, "S" + str(switchId), taillabel=intf.intfIp, xlabel="", label=speed + " bps",
                              arrowhead="none")
-                    
+
             #If no switch like device is used
-            else:
+            elif (len(intf.pointingIps)==1):
                 #Gets the interface information and the external ip connected to it.
                 interInfo = fromRouterGetIntf(intf.intfIp,routerId)
+                print(intf.intfIp)
                 extRouter = getRouterFromIp(intf.pointingIps[0])
                 edges.append(
                     (VectorInfo(routerId, extRouter, intf.intfIp, intf.pointingIps[0], interInfo.speed)))
 
-    #As the routes are repeated because 2 routers have the same connection information we remove those that are repeated.       
+    #As the routes are repeated because 2 routers have the same connection information we remove those that are repeated.
     filtered_edges = []
     for edge in edges:
         found = False
@@ -230,7 +251,8 @@ def createGraph():
             filtered_edges.append((edge))
     #Creates the visual representation of the finally achieved connections
     for edge in filtered_edges:
-        net.edge(edge.inRouter, edge.extRouter, headlabel=str(edge.extIp), taillabel=str(edge.inIp), xlabel="",
+        if(edge.extRouter!=None):
+            net.edge(str(edge.inRouter), str(edge.extRouter), headlabel=str(edge.extIp), taillabel=str(edge.inIp), xlabel="",
                  label=str(edge.speed) + " bps", arrowhead="none")
     return net, filtered_edges
 
@@ -259,7 +281,7 @@ def fromRouterGetIntf(ip,router):
             return interface
 
 
-#Given an ip returns to which ip is connected to 
+#Given an ip returns to which ip is connected to
 def searchConnectedIp(ip):
     for k, v in routersExtIps.items():
         for intfs in v:
@@ -268,7 +290,7 @@ def searchConnectedIp(ip):
                     return intfs.intfIp
                 
 #If the users input is "y" then is true, else is false
-def isDebugging(inputResult): 
+def isDebugging(inputResult):
     if(inputResult=="y"):
         return True
     return False
@@ -282,7 +304,8 @@ def getRouterFromIp(ip):
             if(ip==intfs.intfIp):
 
                 return k
-                
+
+      
 
 if __name__ == "__main__":
     #notifier = inotify.adapters.Inotify()
@@ -291,17 +314,18 @@ if __name__ == "__main__":
     #thread.start()
 
     #Get the ip address from input
-    yourIp=""
-    seekingIp=""
+
     debugging=False
     yourIp = input("Insert your device interface IP connected to the target network: ")
     seekingIp = input("Insert the ip address you wanna search in the target network: ")
     debugging = isDebugging(input("Debug the network search? (y/n)"))
-    
+
     IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
     print("Searching...")
     recursiveSearch(seekingIp,debugging)  # ip our tap interface is connected to
+    removeShut()
     
+
     print("\n 1 - POLLING ALL THE ROUTERS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # Apartat 1 - i/f info (for every router)
     for k, value in routersIfs.items():
@@ -328,6 +352,9 @@ if __name__ == "__main__":
     for ip in shortest_paths:
         print(f"Shortests paths from {ip}({str(getRouterFromIp(ip))}): ")
         for target, intermediate in shortest_paths[ip].items():
+            if getRouterFromIp(ip) == getRouterFromIp(target):
+                print(f"Skipping ip {target} since they're interfaces on the same router")
+                continue
             path = [target +"("+str(getRouterFromIp(target))+")"]
             while intermediate != ip:
                 path.append(str(getRouterFromIp(intermediate)))
