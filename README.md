@@ -44,13 +44,7 @@ Now you're free to start the services (and if you can't, try installing them fir
 ```
 
 # Searcher.py usage:
-  When you write "python3 searcher.py" on the terminal you want to run our program, you'll be promted 
-  
-  to tell which IP you're using to connect to the network, and then you'll be asked for the ip of the first router
-  
-  you want to poll information from. 
+ When you write "python3 searcher.py" on the terminal you want to run our program, you'll be promted to tell which IP you're using to connect to the network, and then you'll be asked for the ip of the first router you want to poll information from. 
 
-  
-  If you want to actively see which router is being polled and the connections it has, you can activate the debug option. 
-  
-  If you just want to see the resulting information of the complete network, feel free to not   activate it.
+If you want to actively see which router is being polled and the connections it has, you can activate the debug option. 
+If you just want to see the resulting information of the complete network, feel free to not   activate it.
