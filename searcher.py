@@ -297,10 +297,10 @@ def getRouterFromIp(ip):
                 
 
 if __name__ == "__main__":
-    #notifier = inotify.adapters.Inotify()
-    #notifier.add_watch("/etc/snmp/script/logs.txt")
-    #thread = threading.Thread(target=waitForTrap, args=(notifier,))
-    #thread.start()
+    notifier = inotify.adapters.Inotify()
+    notifier.add_watch("/etc/snmp/script/logs.txt")
+    thread = threading.Thread(target=waitForTrap, args=(notifier,))
+    thread.start()
 
     #Get the ip address from input
 
@@ -339,6 +339,9 @@ if __name__ == "__main__":
     for ip in shortest_paths:
         print(f"Shortests paths from {ip}({str(getRouterFromIp(ip))}): ")
         for target, intermediate in shortest_paths[ip].items():
+            if getRouterFromIp(ip) == getRouterFromIp(target):
+                print(f"Skipping ip {target} since they're interfaces on the same router")
+                continue
             path = [target +"("+str(getRouterFromIp(target))+")"]
             while intermediate != ip:
                 path.append(str(getRouterFromIp(intermediate)))
