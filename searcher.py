@@ -151,12 +151,6 @@ def dijkstra(routers):
     return shortest_paths
 
 
-def getRouter(ip):
-    for router in routersIfs.keys():
-        for intf in routersIfs[router]:
-            if ip == intf.intfIp:
-                return router
-
 
 """ Method used to collect all ip's associated with a router """
 
