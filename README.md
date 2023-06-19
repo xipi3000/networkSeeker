@@ -9,7 +9,7 @@ pip install -r requirements.txt
 
 # Activating monitorization: 
  
-In order to set up the trap catcher, you'll have to follow these steps:
+In order to set up the trap catcher, you'll have to follow these steps (you'll need admin privileges, that's why all commands have sudo before them):
   
 First, go to /etc/snmp and create a new directory called "script":
 ```shell
