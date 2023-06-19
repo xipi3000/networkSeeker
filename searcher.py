@@ -48,7 +48,7 @@ def recursiveSearch(sessionIp,debugging):
     except:
         shutIps.add(sessionIp)
         if(debugging):
-            print("No working networks here")
+            print("No working networks here: "+sessionIp)
         exit(-1)
     name = session.get('enterprises.9.2.1.3.0').value
     # Getting the routing table info
@@ -310,10 +310,10 @@ def getRouterFromIp(ip):
       
 
 if __name__ == "__main__":
-    #notifier = inotify.adapters.Inotify()
-    #notifier.add_watch("/etc/snmp/script/logs.txt")
-    #thread = threading.Thread(target=waitForTrap, args=(notifier,))
-    #thread.start()
+    notifier = inotify.adapters.Inotify()
+    notifier.add_watch("/etc/snmp/script/logs.txt")
+    thread = threading.Thread(target=waitForTrap, args=(notifier,))
+    thread.start()
 
     #Get the ip address from input
 
