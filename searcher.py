@@ -190,7 +190,9 @@ def createGraph():
         for intf in intfs:
 
             #If there are more than one external ips means that a switch like device is being used so it creates a switch node
-            if (len(intf.pointingIps) > 1):
+            if (len(intf.pointingIps)<1):
+                "no"
+            elif (len(intf.pointingIps) > 1):
                 speed = fromRouterGetIntf(intf.intfIp,routerId).speed
                 foundIp = False
 
@@ -217,6 +219,7 @@ def createGraph():
             else:
                 #Gets the interface information and the external ip connected to it.
                 interInfo = fromRouterGetIntf(intf.intfIp,routerId)
+                print(intf.intfIp)
                 extRouter = getRouterFromIp(intf.pointingIps[0])
                 edges.append(
                     (VectorInfo(routerId, extRouter, intf.intfIp, intf.pointingIps[0], interInfo.speed)))
@@ -293,8 +296,7 @@ if __name__ == "__main__":
     #thread.start()
 
     #Get the ip address from input
-    yourIp=""
-    seekingIp=""
+
     debugging=False
     yourIp = input("Insert your device interface IP connected to the target network: ")
     seekingIp = input("Insert the ip address you wanna search in the target network: ")
