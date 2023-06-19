@@ -20,7 +20,7 @@ mkdir script
 Then, go to the "extra_files" directory provided with the project and copy 
 all .conf files to /etc/snmp, and the "trap_handler" file 
 into the new script directory:
-````shell
+```shell
 cd /<path-to-project>/extra_files
 cp snmp.conf /etc/snmp
 cp snmpd.conf /etc/snmp
