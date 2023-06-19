@@ -1,5 +1,7 @@
 First of all, install all the requirements listed in the requirements.txt. 
+
 You can do it with the command: 
+
 pip install -r requirements.txt
 
 To activate the monitorization: 
