@@ -240,6 +240,7 @@ def createGraph():
                  label=str(edge.speed) + " bps", arrowhead="none")
     return net, filtered_edges
 
+
 #This object encapsulates all the information required for each node connection in the visual graph.
 class VectorInfo():
     def __init__(self, inRouter, extRouter, inIp, extIp, speed):
