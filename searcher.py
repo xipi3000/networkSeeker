@@ -273,9 +273,9 @@ if __name__ == "__main__":
     yourIp="11.0.5.2"
     seekingIp="11.0.5.1"
     debugging=False
-    #yourIp = input("Insert your device interface IP connected to the target network: ")
-    #seekingIp = input("Insert the ip address you wanna search in the target network: ")
-    #debugging = isDebugging(input("Debug the network search? (y/n)"))
+    yourIp = input("Insert your device interface IP connected to the target network: ")
+    seekingIp = input("Insert the ip address you wanna search in the target network: ")
+    debugging = isDebugging(input("Debug the network search? (y/n)"))
     
     IPs.add(yourIp)  # we add our tap ip address, so it doesn't get checked
     print("Searching...")
